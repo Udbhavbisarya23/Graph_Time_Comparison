@@ -33,7 +33,7 @@ void insert(struct HashItem* mp,int key,int value,int vertices) {
 
 int main() {
     FILE* fp;
-    char filename[] = "Graphs/as-caida20071105.txt";
+    char filename[] = "../../Graphs/as-caida20071105.txt";
     fp = fopen(filename,"r");
     if(fp == NULL) {
         printf("Error in opening file\n");
@@ -82,7 +82,7 @@ int main() {
     fclose(fp);
     fp = fopen(filename,"r");
     FILE *fp2;
-    fp2 = fopen("Graphs/as-caida20071105_sanitized.txt","w");
+    fp2 = fopen("../../Graphs/as-caida20071105_sanitized.txt","w");
 
     char s[250];  
     int val = 0;
@@ -115,7 +115,7 @@ int main() {
         int src=-1,dest=-1;
 
         char* token;
-        if(strcmp(filename,"Graphs/twitter_combined.txt") == 0) {
+        if(strcmp(filename,"../../Graphs/twitter_combined.txt") == 0) {
             token = strtok(s," ");
         } else {
             token = strtok(s,"\t");
