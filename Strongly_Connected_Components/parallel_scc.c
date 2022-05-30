@@ -61,7 +61,7 @@ void addEdge(struct Graph* graph,int src,int dest) {
 void printGraph(struct Graph* graph) {
     int v;
     
-    #pragma omp parallel for default(none) shared(graph)
+    #pragma omp parallel for default(none) shared(graph) schedule(dynamic,5)
     for (v = 0; v < graph->vertices; ++v) {
         struct AdjacencyListNode* pCrawl = graph->arr[v].head;
         printf("\n Adjacency list of vertex %d\n head ", v);
@@ -100,11 +100,12 @@ struct Graph* TransposeGraph(struct Graph* graph){
 
     #pragma omp parallel default(none) shared(graph,fin_graph)
     {
-        #pragma omp for
+        #pragma omp for schedule(dynamic,5)
         for(int i=0;i<graph->vertices;i++) {
             struct AdjacencyListNode *node = graph->arr[i].head;
             while(node != NULL) {
-                addEdge(fin_graph,node->curr,i);
+                #pragma omp critical
+                    addEdge(fin_graph,node->curr,i);
                 node = node->next;
             }
         }
@@ -139,7 +140,7 @@ void printSCC(int* scc,int vertices) {
 
     #pragma omp parallel default(none) shared(scc,vertices) 
     {
-        #pragma omp for schedule(runtime)
+        #pragma omp for schedule(dynamic,5)
         for(int i=0;i<vertices;i++) {
             printf("SCC of vertex %d :- %d\n",i,scc[i]);
         }
@@ -178,13 +179,8 @@ void Kosaraju(struct Graph* graph){
     // }
 
     printf("Stack:- ");
-    
-    #pragma omp parallel default(none) shared(stack,vertices)
-    {
-        #pragma omp for schedule(runtime)
-        for(int i=0;i<vertices;i++) {
-            printf("%d ",stack[i]);
-        }
+    for(int i=0;i<vertices;i++) {
+        printf("%d ",stack[i]);
     }
 
     //STEP 2 
@@ -196,18 +192,12 @@ void Kosaraju(struct Graph* graph){
     //STEP 3
     // DFS in the reverse order
     int scc[vertices];
-    
     for(int i=0;i<vertices;i++) {
         visited[i] = 0;
         scc[i] = -1;
     }
-    
-    #pragma omp parallel default(none) shared(stack,vertices,graph_T,visited,scc)
-    {
-        #pragma omp for
-        for(int i=vertices-1;i>=0;i--) {
-            DFS(stack[i],graph_T,visited,scc,-1);
-        }
+    for(int i=vertices-1;i>=0;i--) {
+        DFS(stack[i],graph_T,visited,scc,-1);
     }
     //STEP 4
     //Print SCCs
@@ -216,7 +206,7 @@ void Kosaraju(struct Graph* graph){
 
 int main() {
     FILE* fp;
-    fp = fopen("../Graphs/Amazon0302.txt","r");
+    fp = fopen("../Graphs/as-caida20071105_sanitized.txt","r");
     if(fp == NULL) {
         printf("Error in opening file\n");
         return 0;
@@ -289,6 +279,12 @@ int main() {
     time_start = TimeValue_Start.tv_sec * 1000000 + TimeValue_Start.tv_usec;
     time_end = TimeValue_Final.tv_sec * 1000000 + TimeValue_Final.tv_usec;
     time_overhead = (time_end - time_start)/1000000.0;
+    #pragma omp parallel
+    {
+        int threadid = omp_get_thread_num();
+        printf("%d\n",threadid);
+    }
+    
     printf("Parallel SCC Time: %lf\n", time_overhead);
     printf("Number of SCC's:- %d\n",scc_count);
 

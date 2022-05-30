@@ -143,7 +143,6 @@ void Kosaraju(struct Graph* graph){
     // int end_time[vertices];
     int time = 0;
     
-
     for(int i=0;i<vertices;i++) {
         visited[i] = 0;
         stack[i] = -1;
@@ -192,7 +191,7 @@ void Kosaraju(struct Graph* graph){
 
 int main() {
     FILE* fp;
-    fp = fopen("../Graphs/Amazon0302.txt","r");
+    fp = fopen("../Graphs/as-caida20071105_sanitized.txt","r");
     if(fp == NULL) {
         printf("Error in opening file\n");
         return 0;

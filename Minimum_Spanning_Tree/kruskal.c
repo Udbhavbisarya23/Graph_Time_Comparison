@@ -9,7 +9,11 @@
 
 int main() {
     struct Graph* graph;
-    readUndirectedWeightedGraph(graph,"../../Graphs/Amazon0302.txt");
+    char* oldFilename = "../../Minimum_Spanning_Tree/Undirected_Weighted_Graphs/sampleInput.txt";
+    char* newFilename = "../../Minimum_Spanning_Tree/Undirected_Weighted_Graphs/sampleInput_sanitized.txt";
+    formatUndirectedWeighted(oldFilename);
+    sanitizeUndirectedWeighted(oldFilename, newFilename);
+    readUndirectedWeightedGraph(graph,newFilename);
 
     struct timeval TimeValue_Start;
     struct timezone TimeZone_Start;
