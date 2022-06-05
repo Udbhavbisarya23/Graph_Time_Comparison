@@ -16,8 +16,6 @@ void formatUndirectedWeighted(char* filename) {
         return;
     }
 
-    printf("Inside format function\n");
-
     char *line = NULL;
     size_t len = 0;
     ssize_t read = -1;
@@ -29,7 +27,6 @@ void formatUndirectedWeighted(char* filename) {
         while(ch != '\n' && ch != EOF){
             if(ch==' ')
             {
-                printf("Char is :- %c\n", ch); 
                 fseek(fp, -1, SEEK_CUR);
                 fputc('\t', fp);
                 fseek(fp, 0, SEEK_CUR);	
@@ -44,8 +41,6 @@ void formatUndirectedWeighted(char* filename) {
     fclose(fp);
     if (line)
         free(line);
-    
-    printf("Format function complete\n");
 
 }
 
@@ -67,7 +62,6 @@ void sanitizeUndirectedWeighted(char* oldFilename, char* newFilename) {
     while ((read = getline(&line, &len, fp)) != -1) {
         
         char* num_vertices = strtok(line," ");
-        printf("%s\n",num_vertices);
         vertices = atoi(num_vertices);
         
         break;
@@ -105,11 +99,9 @@ void sanitizeUndirectedWeighted(char* oldFilename, char* newFilename) {
             
             int temp = atoi(token);
             int num = search(mp,temp,vertices);
-            printf("%d\n",num);
             if(num == -1) {
                 insert(mp,temp,val,vertices);
                 num = val;
-                printf("New key val pairs are:- %d, %d\n",temp,val);
                 val += 1;
             } 
             src = num;
@@ -117,12 +109,10 @@ void sanitizeUndirectedWeighted(char* oldFilename, char* newFilename) {
             token = strtok(NULL,"\t");
             temp = atoi(token);
             num = search(mp,temp,vertices);
-            printf("%d\n",num);
             if(num == -1) {
                 insert(mp,temp,val,vertices);
                 num = val;
                 val += 1;
-                printf("New key val pairs are:- %d, %d\n",temp,val);
             }
             dest = num;
 
@@ -144,12 +134,8 @@ void sanitizeUndirectedWeighted(char* oldFilename, char* newFilename) {
 
     }
 
-    for(int i=0;i<vertices;i++) {
-        printf("New key val pairs are:- %d, %d\n",mp[i].key,mp[i].value);
-    }
-
-
     fclose(fp);
+    fclose(fp2);
     if (line)
         free(line);
         

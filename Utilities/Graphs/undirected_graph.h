@@ -23,14 +23,29 @@ struct Graph {
     struct AdjacencyList* arr;
 };
 
+struct Edge {
+    int weight;
+    int node1;
+    int node2;
+};
+
+struct EdgeList {
+    int num_edges;
+    struct Edge* edges;
+};
+
+struct EdgeListPartition {
+    struct EdgeList* LessThanPivotPartition;
+    struct EdgeList* MoreThanPivotPartition;
+};
+
 struct Graph* createGraph(int vertices);
-
 void addToAdjacencyList(struct Graph* graph,int src,int dest,int weight);
-
 void addEdge(struct Graph* graph,int src,int dest,int weight);
-
 void printGraph(struct Graph* graph);
+struct Graph* readUndirectedWeightedGraph(char* filename);
 
-void readUndirectedWeightedGraph(struct Graph* graph,char* filename);
+struct EdgeList* sortUndirectedWeightedGraph(struct Graph* graph);
+void printEdgeList(struct EdgeList* edgelist);
 
 #endif
