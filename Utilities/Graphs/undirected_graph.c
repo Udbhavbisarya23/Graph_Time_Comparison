@@ -3,6 +3,7 @@
 #include<string.h>
 #include<sys/time.h>
 #include<time.h>
+#include<omp.h>
 
 #include "undirected_graph.h"
 
@@ -177,4 +178,86 @@ void printEdgeList(struct EdgeList* edgelist) {
     for(int i=0;i<edgelist->num_edges;i++) {
         printf("Weight:-%d, Node1:-%d, Node2:-%d\n",edgelist->edges[i].weight,edgelist->edges[i].node1,edgelist->edges[i].node2);
     }
+}
+
+void swapEdgeList(struct EdgeList* edgelist,int i,int j) {
+    
+    struct Edge* temp = (struct Edge*)malloc(sizeof(struct Edge));
+    
+    temp->node1 = edgelist->edges[i].node1;
+    temp->node2 = edgelist->edges[i].node2;
+    temp->weight = edgelist->edges[i].weight;
+
+    edgelist->edges[i].node1 = edgelist->edges[j].node1;
+    edgelist->edges[i].node2 = edgelist->edges[j].node2;
+    edgelist->edges[i].weight = edgelist->edges[j].weight;
+
+    edgelist->edges[j].node1 = temp->node1;
+    edgelist->edges[j].node2 = temp->node2;
+    edgelist->edges[j].weight = temp->weight;
+
+}
+
+int partitionEdgeList(struct EdgeList* edgelist,int low, int high) {
+    int pivot = edgelist->edges[high].weight; // pivot
+    int i = (low - 1); // Index of smaller element and indicates the right position of pivot found so far
+ 
+    for (int j = low; j <= high - 1; j++)
+    {
+        // If current element is smaller than the pivot
+        if (edgelist->edges[j].weight < pivot)
+        {
+            i++; // increment index of smaller element
+            swapEdgeList(edgelist, i, j);
+        }
+    }
+    swapEdgeList(edgelist,i+1,high);
+    return (i + 1);
+}
+
+void sortSerialEdgeList(struct EdgeList* edgelist,int low,int high) {
+     if(low<high) {
+        int pi = partitionEdgeList(edgelist, low, high);
+ 
+        // Separately sort elements before
+        // partition and after partition
+        sortSerialEdgeList(edgelist, low, pi - 1);
+        sortSerialEdgeList(edgelist, pi + 1, high);
+     } 
+}
+
+int partitionParallelEdgeList(struct EdgeList* edgelist,int low, int high) {
+    int pivot = edgelist->edges[high].weight; // pivot
+    int i = (low - 1); // Index of smaller element and indicates the right position of pivot found so far
+ 
+    #pragma omp parallel default(none) shared(low,high,edgelist,pivot,i)
+    {
+        
+        #pragma omp for
+        for (int j = low; j <= high - 1; j++)
+        {
+            // If current element is smaller than the pivot
+            if (edgelist->edges[j].weight < pivot)
+            {
+                #pragma omp critical
+                {
+                    i++; // increment index of smaller element
+                    swapEdgeList(edgelist, i, j);
+                }
+            }
+        }
+    }
+    swapEdgeList(edgelist,i+1,high);
+    return (i + 1);
+}
+
+void sortParallelEdgeList(struct EdgeList* edgelist,int low,int high) {
+     if(low<high) {
+        int pi = partitionParallelEdgeList(edgelist, low, high);
+ 
+        // Separately sort elements before
+        // partition and after partition
+        sortParallelEdgeList(edgelist, low, pi - 1);
+        sortParallelEdgeList(edgelist, pi + 1, high);
+     } 
 }

@@ -3,6 +3,7 @@
 #include<string.h>
 #include<sys/time.h>
 #include<time.h>
+#include<omp.h>
 
 #include "../Utilities/format_file/format_file.h"
 #include "../Utilities/Graphs/undirected_graph.h"
@@ -14,15 +15,14 @@ int Kruskal(struct Graph* graph,struct EdgeList* edgelist,struct DisjointSets* d
     
     int weight = 0;
 
-    sortSerialEdgeList(edgelist,0,edgelist->num_edges-1);
+    sortParallelEdgeList(edgelist,0,edgelist->num_edges-1);
 
     for(int i=0;i<edgelist->num_edges;i++) {
-
         if(findParent(ds,edgelist->edges[i].node1) != findParent(ds,edgelist->edges[i].node2)) {
             
             // printf("\nWeight-%d \tNode1-%d \tNode2-%d\n",sorted->edges[i].weight,sorted->edges[i].node1,sorted->edges[i].node2);
             // printDisjointSets(ds);
-            
+                 
             unionByRank(ds,edgelist->edges[i].node1,edgelist->edges[i].node2);
             weight += edgelist->edges[i].weight;
         }
@@ -74,19 +74,34 @@ struct EdgeListPartition* partition(struct EdgeList* edgelist,int pivot) {
 
 struct EdgeList* Filter(struct EdgeList* edgelist,struct DisjointSets* ds) {
     struct EdgeList* ret = (struct EdgeList*)malloc(sizeof(struct EdgeList));
-    struct Edge* edges = (struct Edge*)malloc(sizeof(struct Edge));
+    struct Edge* edges = (struct Edge*)malloc(edgelist->num_edges*sizeof(struct Edge));
 
     int curr_ind = 0;
 
-    for(int i=0;i<edgelist->num_edges;i++) {
-        if(findParent(ds,edgelist->edges[i].node1) != findParent(ds,edgelist->edges[i].node2)) {
-            edges = realloc(edges,(curr_ind+1)*sizeof(struct Edge));
-            edges[curr_ind].node1 = edgelist->edges[i].node1;
-            edges[curr_ind].node2 = edgelist->edges[i].node2;
-            edges[curr_ind].weight = edgelist->edges[i].weight;
-            curr_ind++;
+    #pragma omp parallel default(none) shared(curr_ind,edges,ds,edgelist)
+    {        
+        #pragma omp for
+        for(int i=0;i<edgelist->num_edges;i++) {
+
+            int a = findParent(ds,edgelist->edges[i].node1);
+            int b = findParent(ds,edgelist->edges[i].node2);
+
+            if(a != b) {
+
+                #pragma omp critical
+                {
+                    edges[curr_ind].node1 = edgelist->edges[i].node1;
+                    edges[curr_ind].node2 = edgelist->edges[i].node2;
+                    edges[curr_ind].weight = edgelist->edges[i].weight;
+                    curr_ind++;
+                }
+            }
+
+
         }
     }
+
+    edges = realloc(edges,curr_ind*(sizeof(struct Edge)));
 
     ret->edges = edges;
     ret->num_edges = curr_ind;
@@ -146,5 +161,9 @@ int main() {
     time_start = TimeValue_Start.tv_sec * 1000000 + TimeValue_Start.tv_usec;
     time_end = TimeValue_Final.tv_sec * 1000000 + TimeValue_Final.tv_usec;
     time_overhead = (time_end - time_start)/1000000.0;
-    printf("Sequential SCC Time: %lf\n", time_overhead);
+    printf("Parallel SCC Time: %lf\n", time_overhead);
+    #pragma omp parallel
+    {
+        printf("Thread ID:- %d\n",omp_get_thread_num());
+    }
 }

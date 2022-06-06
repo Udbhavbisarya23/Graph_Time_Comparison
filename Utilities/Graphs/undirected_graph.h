@@ -6,6 +6,7 @@
 #include<string.h>
 #include<sys/time.h>
 #include<time.h>
+#include<omp.h>
 
 
 struct AdjacencyListNode {
@@ -47,5 +48,10 @@ struct Graph* readUndirectedWeightedGraph(char* filename);
 
 struct EdgeList* sortUndirectedWeightedGraph(struct Graph* graph);
 void printEdgeList(struct EdgeList* edgelist);
+void swapEdgeList(struct EdgeList* edgelist,int i,int j);
+int partitionEdgeList(struct EdgeList* edgelist,int low, int high);
+void sortSerialEdgeList(struct EdgeList* edgelist, int low, int high);
+void sortParallelEdgeList(struct EdgeList* edgelist,int low,int high);
+
 
 #endif

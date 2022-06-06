@@ -9,7 +9,7 @@ cmake -S . -B _build/
 cd _build/
 make
 cd Minimum_Spanning_Tree/
-./kruskal 
+./parallel_kruskal 
 cd ../../
 
 ```
