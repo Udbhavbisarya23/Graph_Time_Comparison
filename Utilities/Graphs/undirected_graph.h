@@ -11,7 +11,7 @@
 
 struct AdjacencyListNode {
     int curr;
-    int edge_weight;
+    float edge_weight;
     struct AdjacencyListNode* next;
 };
 
@@ -25,7 +25,7 @@ struct Graph {
 };
 
 struct Edge {
-    int weight;
+    float weight;
     int node1;
     int node2;
 };
@@ -41,8 +41,8 @@ struct EdgeListPartition {
 };
 
 struct Graph* createGraph(int vertices);
-void addToAdjacencyList(struct Graph* graph,int src,int dest,int weight);
-void addEdge(struct Graph* graph,int src,int dest,int weight);
+void addToAdjacencyList(struct Graph* graph,int src,int dest,float weight);
+void addEdge(struct Graph* graph,int src,int dest,float weight);
 void printGraph(struct Graph* graph);
 struct Graph* readUndirectedWeightedGraph(char* filename);
 

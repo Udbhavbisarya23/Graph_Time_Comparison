@@ -25,3 +25,18 @@ void insert(struct HashItem* mp,int key,int value,int vertices) {
     }
     return;
 }
+
+void update(struct HashItem* mp,int key,int newVal, int vertices) {
+    for(int i=0;i<vertices;i++) {
+        if(mp[i].key == key) {
+            mp[i].value = newVal;
+            return;
+        }
+    }
+}
+
+void printMap(struct HashItem* mp,int vertices) {
+    for(int i=0;i<vertices;i++) {
+        printf("Key:- %d,Value:- %d\n",mp[i].key,mp[i].value);
+    }
+}

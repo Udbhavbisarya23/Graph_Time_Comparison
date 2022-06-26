@@ -1,1 +1,2 @@
 add_library(undirected_graph undirected_graph.c undirected_graph.h)
+add_library(directed_graph directed_graph.c directed_graph.h)

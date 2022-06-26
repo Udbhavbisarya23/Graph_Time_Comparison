@@ -8,10 +8,17 @@
 #include "../Graphs/undirected_graph.h"
 #include "../data_structures/map.h"
 
-void formatUndirectedWeighted(char* filename) {
+void formatUndirectedWeighted(char* filename, char* newFilename) {
     FILE *fp;
-    fp = fopen(filename, "r+w");
+    fp = fopen(filename, "r");
     if(fp == NULL) {
+        printf("Error in opening file while formatting\n");
+        return;
+    }
+
+    FILE *fp2;
+    fp2 = fopen(newFilename,"w");
+    if(fp2 == NULL) {
         printf("Error in opening file while formatting\n");
         return;
     }
@@ -23,22 +30,19 @@ void formatUndirectedWeighted(char* filename) {
 
     while ((read = getline(&line, &len, fp)) != -1) {
 
-        char ch = fgetc(fp);
-        while(ch != '\n' && ch != EOF){
-            if(ch==' ')
-            {
-                fseek(fp, -1, SEEK_CUR);
-                fputc('\t', fp);
-                fseek(fp, 0, SEEK_CUR);	
+        char* temp = line;
+        for(size_t i=0;i<len;i++) {
+            if(line[i] == ' ') {
+                temp[i] = '\t';
+            } else {
+                temp[i] = line[i];
             }
-            ch = fgetc(fp);
         }
-        if(ch == EOF)
-            break;
-
+        fputs(temp,fp2);
     }
 
     fclose(fp);
+    fclose(fp2);
     if (line)
         free(line);
 
@@ -87,7 +91,8 @@ void sanitizeUndirectedWeighted(char* oldFilename, char* newFilename) {
             fputs(s,fp2);
             continue;
         }
-        int src=-1,dest=-1,weight=-1;
+        int src=-1,dest=-1;
+        float weight = -1.0;
 
         char* token;
         if(strcmp(oldFilename,"../../Graphs/twitter_combined.txt") == 0) {
@@ -117,14 +122,14 @@ void sanitizeUndirectedWeighted(char* oldFilename, char* newFilename) {
             dest = num;
 
             token = strtok(NULL," ");
-            temp = atoi(token);
-            weight = temp;
+            float temp2 = atof(token);
+            weight = temp2;
         }
 
         char s1[50],s2[20],s3[50];
         sprintf(s1,"%d",src);
         sprintf(s2,"%d",dest);
-        sprintf(s3,"%d",weight);
+        sprintf(s3,"%f",weight);
         strcat(s1,"\t");
         strcat(s2,"\t");
         strcat(s3,"\n");

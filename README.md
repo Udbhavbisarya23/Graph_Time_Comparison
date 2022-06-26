@@ -8,8 +8,8 @@ This project works on the parallelization of graph algorithms. THe following gra
 cmake -S . -B _build/
 cd _build/
 make
-cd Minimum_Spanning_Tree/
-./parallel_kruskal 
+cd Strongly_Connected_Components/
+./scc 
 cd ../../
 
 ```

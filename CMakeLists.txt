@@ -3,5 +3,6 @@ project(parallelizing_graphs)
 
 find_package(OpenMP REQUIRED)
 add_subdirectory(Minimum_Spanning_Tree)
+add_subdirectory(Strongly_Connected_Components)
 
 add_subdirectory(Utilities)

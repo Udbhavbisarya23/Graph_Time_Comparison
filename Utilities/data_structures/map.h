@@ -14,4 +14,8 @@ int search(struct HashItem* mp,int key,int vertices);
 
 void insert(struct HashItem* mp,int key,int value,int vertices);
 
+void update(struct HashItem* mp,int key,int newVal, int vertices);
+
+void printMap(struct HashItem* mp,int vertices);
+
 #endif

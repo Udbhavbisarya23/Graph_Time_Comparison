@@ -23,7 +23,7 @@ struct Graph* createGraph(int vertices) {
     return graph;
 };
 
-void addToAdjacencyList(struct Graph* graph,int src,int dest,int weight) {
+void addToAdjacencyList(struct Graph* graph,int src,int dest,float weight) {
     //Creating the new Node to be added to the srcs adjacency list
     
     struct AdjacencyListNode* newNode = (struct AdjacencyListNode*)malloc(sizeof(struct AdjacencyListNode));
@@ -45,7 +45,7 @@ void addToAdjacencyList(struct Graph* graph,int src,int dest,int weight) {
     temp->next = newNode;
 }
 
-void addEdge(struct Graph* graph,int src,int dest,int weight) {
+void addEdge(struct Graph* graph,int src,int dest,float weight) {
     
     addToAdjacencyList(graph,src,dest,weight);
     addToAdjacencyList(graph,dest,src,weight);
@@ -59,7 +59,7 @@ void printGraph(struct Graph* graph) {
         struct AdjacencyListNode* pCrawl = graph->arr[v].head;
         printf("\n Adjacency list of vertex %d\n head ", v);
         while (pCrawl) {
-            printf("-> %d,%d", pCrawl->curr,pCrawl->edge_weight);
+            printf("-> %d,%f", pCrawl->curr,pCrawl->edge_weight);
             pCrawl = pCrawl->next;
         }
         printf("\n");
@@ -104,8 +104,8 @@ struct Graph* readUndirectedWeightedGraph(char* filename) {
             if(src >= vertices || dest >= vertices) {
                 count += 1;
             }
-            token = strtok(NULL," ");
-            int weight = atoi(token);
+            token = strtok(NULL,"\t");
+            float weight = atof(token);
             addEdge(graph,src,dest,weight);
         }
 
@@ -155,7 +155,7 @@ struct EdgeList* sortUndirectedWeightedGraph(struct Graph* graph) {
             if(edges[i].weight > edges[j].weight) {
                 int tempNode1 = edges[i].node1;
                 int tempNode2 = edges[i].node2;
-                int tempWeight = edges[i].weight;
+                float tempWeight = edges[i].weight;
 
                 edges[i].node1 = edges[j].node1;
                 edges[i].node2 = edges[j].node2;
@@ -176,7 +176,7 @@ struct EdgeList* sortUndirectedWeightedGraph(struct Graph* graph) {
 void printEdgeList(struct EdgeList* edgelist) {
     printf("Number of edges:- %d\n",edgelist->num_edges);
     for(int i=0;i<edgelist->num_edges;i++) {
-        printf("Weight:-%d, Node1:-%d, Node2:-%d\n",edgelist->edges[i].weight,edgelist->edges[i].node1,edgelist->edges[i].node2);
+        printf("Weight:-%f, Node1:-%d, Node2:-%d\n",edgelist->edges[i].weight,edgelist->edges[i].node1,edgelist->edges[i].node2);
     }
 }
 
@@ -199,7 +199,7 @@ void swapEdgeList(struct EdgeList* edgelist,int i,int j) {
 }
 
 int partitionEdgeList(struct EdgeList* edgelist,int low, int high) {
-    int pivot = edgelist->edges[high].weight; // pivot
+    float pivot = edgelist->edges[high].weight; // pivot
     int i = (low - 1); // Index of smaller element and indicates the right position of pivot found so far
  
     for (int j = low; j <= high - 1; j++)
@@ -227,7 +227,7 @@ void sortSerialEdgeList(struct EdgeList* edgelist,int low,int high) {
 }
 
 int partitionParallelEdgeList(struct EdgeList* edgelist,int low, int high) {
-    int pivot = edgelist->edges[high].weight; // pivot
+    float pivot = edgelist->edges[high].weight; // pivot
     int i = (low - 1); // Index of smaller element and indicates the right position of pivot found so far
  
     #pragma omp parallel default(none) shared(low,high,edgelist,pivot,i)

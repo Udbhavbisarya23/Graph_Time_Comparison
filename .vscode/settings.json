@@ -1,5 +1,14 @@
 {
     "files.associations": {
-        "undirected_graph.h": "c"
+        "undirected_graph.h": "c",
+        "hash_map": "c",
+        "hash_set": "c",
+        "*.tcc": "c",
+        "deque": "c",
+        "string": "c",
+        "unordered_map": "c",
+        "unordered_set": "c",
+        "vector": "c",
+        "ostream": "c"
     }
 }
