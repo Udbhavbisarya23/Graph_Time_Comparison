@@ -8,7 +8,7 @@
 #include "../Utilities/Graphs/undirected_graph.h"
 #include "../Utilities/data_structures/disjoint_sets.h"
 
-#define KRUSKAL_THRESHOLD 220
+#define KRUSKAL_THRESHOLD 20000
 
 float Kruskal(struct Graph* graph,struct EdgeList* edgelist,struct DisjointSets* ds) {
     
@@ -102,25 +102,21 @@ float FilterKruskal(struct Graph* graph,struct EdgeList* edgelist,struct Disjoin
     
     //Partition
     struct EdgeListPartition * partitions = partition(edgelist,pivot);
-
+    free(edgelist);
     // Filter Kruskal on the 2 halfs
     float a = FilterKruskal(graph,partitions->LessThanPivotPartition,ds);
 
     partitions->MoreThanPivotPartition = Filter(partitions->MoreThanPivotPartition,ds);
     float b = FilterKruskal(graph,partitions->MoreThanPivotPartition,ds);
 
-
+    free(partitions);
     return a+b;
 
 
 }
 
 int main() {
-    char* oldFilename = "../../Minimum_Spanning_Tree/Undirected_Weighted_Graphs/Wiki_Conflict/out.wikiconflict";
-    char* formattedFilename = "../../Minimum_Spanning_Tree/Undirected_Weighted_Graphs/Wiki_Conflict/out.wikiconflict_formatted";
-    char* newFilename = "../../Minimum_Spanning_Tree/Undirected_Weighted_Graphs/Wiki_Conflict/out.wikiconflict_sanitized";
-    formatUndirectedWeighted(oldFilename, formattedFilename);
-    sanitizeUndirectedWeighted(formattedFilename, newFilename);
+    char* newFilename = "../../Minimum_Spanning_Tree/UndirectedWeightedGraphs/p2p-Gnutella04_sanitized.txt";
     struct Graph* graph = readUndirectedWeightedGraph(newFilename);
     struct EdgeList* sorted = sortUndirectedWeightedGraph(graph);
     srand(time(0));
@@ -134,7 +130,7 @@ int main() {
 
     gettimeofday(&TimeValue_Start, &TimeZone_Start);
     struct DisjointSets* ds = newDisjointSets(graph->vertices);
-    printf("%f\n",FilterKruskal(graph,sorted,ds));
+    printf("MST Value:- %f\n",FilterKruskal(graph,sorted,ds));
     gettimeofday(&TimeValue_Final, &TimeZone_Final);
     time_start = TimeValue_Start.tv_sec * 1000000 + TimeValue_Start.tv_usec;
     time_end = TimeValue_Final.tv_sec * 1000000 + TimeValue_Final.tv_usec;

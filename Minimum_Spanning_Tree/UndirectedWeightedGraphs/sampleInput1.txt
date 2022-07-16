@@ -1,0 +1,24 @@
+# Directed graph (each unordered pair of nodes is saved once): Email-EuAll.txt 
+# Email network of a large European Research Institution (directed edge means at least one email was sent between October 2003 and March 2005)
+# Nodes: 6 Edges: 420045
+# FromNodeId	ToNodeId
+0	1	94
+0	3	115
+0	4	33
+1	0	169
+1	4	163
+1	2	79
+1	5	100
+2	1	19
+2	4	23
+2	5	25
+3	0	138
+3	4	93
+4	3	27
+4	0	141
+4	1	169
+4	2	138
+4	5	164
+5	4	116
+5	2	63
+5	1	38

@@ -80,19 +80,36 @@ struct Graph* readUndirectedWeightedGraph(char* filename) {
     char * line = NULL;
     size_t len = 0;
     ssize_t read = -1;
-    int first = 0;
+    int first = 0, second = 0, third = 0, fourth = 0;
     int vertices;
     int count = 0;
 
     while ((read = getline(&line, &len, fp)) != -1) {
         if(first == 0) {
             first = 1;
-            char* num_vertices = strtok(line,"\n");
+            continue;
+        }
+
+        if(second == 0) {
+            second = 1;
+            continue;
+        }
+
+        if(third == 0) {
+            third = 1;
+            char* garb_string = strtok(line," ");
+            garb_string = strtok(NULL," ");
+            char* num_vertices = strtok(NULL," ");
             printf("%s\n",num_vertices);
             vertices = atoi(num_vertices);
             graph = createGraph(vertices);
             continue;
             
+        }
+        
+        if(fourth == 0) {
+            fourth = 1;
+            continue;
         }
 
         // For each node, the edges have to be read
@@ -116,6 +133,62 @@ struct Graph* readUndirectedWeightedGraph(char* filename) {
         free(line);
     
     return graph;
+}
+
+void merge(struct Edge* edges, int l, int m, int r) {
+    int i,j,k;
+    int n1 = m - l + 1;
+    int n2 = r - m;
+
+    struct Edge* L = (struct Edge*)malloc(sizeof(struct Edge) * n1);
+    struct Edge* R = (struct Edge*)malloc(sizeof(struct Edge) * n2);
+
+    for(i=0;i<n1;i++)
+        L[i] = edges[l+i];
+    
+    for(j=0;j<n2;j++)
+        R[j] = edges[m+1+j];
+    
+    i=0;
+    j=0;
+    k=l;
+
+    while(i<n1 && j<n2) {
+        if(L[i].weight < R[j].weight) {
+            edges[k] = L[i];
+            i++;
+        } else {
+            edges[k] = R[j];
+            j++;
+        }
+        k++;
+    }
+
+    while(i<n1) {
+        edges[k] = L[i];
+        i++;
+        k++;
+    }
+
+    while(j<n2) {
+        edges[k] = R[j];
+        j++;
+        k++;
+    }
+
+    free(L);
+    free(R);
+}
+
+
+void mergeSort(struct Edge* edges, int l, int r) {
+    if(l < r) {
+        int m = l + (r-l)/2;
+        mergeSort(edges,l,m);
+        mergeSort(edges,m+1,r);
+
+        merge(edges, l, m, r);
+    }
 }
 
 struct EdgeList* sortUndirectedWeightedGraph(struct Graph* graph) {
@@ -149,24 +222,27 @@ struct EdgeList* sortUndirectedWeightedGraph(struct Graph* graph) {
         }
     }
 
-    //bubble sort
-    for(int i=0;i<num_edges;i++) {
-        for(int j=i+1;j<num_edges;j++) {
-            if(edges[i].weight > edges[j].weight) {
-                int tempNode1 = edges[i].node1;
-                int tempNode2 = edges[i].node2;
-                float tempWeight = edges[i].weight;
+    // //bubble sort
+    // for(int i=0;i<num_edges;i++) {
+    //     for(int j=i+1;j<num_edges;j++) {
+    //         if(edges[i].weight > edges[j].weight) {
+    //             int tempNode1 = edges[i].node1;
+    //             int tempNode2 = edges[i].node2;
+    //             float tempWeight = edges[i].weight;
 
-                edges[i].node1 = edges[j].node1;
-                edges[i].node2 = edges[j].node2;
-                edges[i].weight = edges[j].weight;
+    //             edges[i].node1 = edges[j].node1;
+    //             edges[i].node2 = edges[j].node2;
+    //             edges[i].weight = edges[j].weight;
 
-                edges[j].node1 = tempNode1;
-                edges[j].node2 = tempNode2;
-                edges[j].weight = tempWeight;
-            }
-        }
-    }
+    //             edges[j].node1 = tempNode1;
+    //             edges[j].node2 = tempNode2;
+    //             edges[j].weight = tempWeight;
+    //         }
+    //     }
+    // }
+
+    //Merge Sort
+    mergeSort(edges,0,num_edges-1);
 
     edgelist->edges = edges;
 

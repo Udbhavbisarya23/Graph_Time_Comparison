@@ -4,6 +4,9 @@
 #include<sys/time.h>
 #include<time.h>
 #include "../Utilities/Graphs/directed_graph.h"
+#include "../Utilities/data_structures/queue.h"
+
+#define CAPACITY 100000
 
 // Implementation of Kosaraju's algorithm and all related functions
 void DFSTimes(int vertex, struct Graph* graph, int* visited, int* stack, int* time) {
@@ -62,6 +65,30 @@ void DFS(int vertex, struct Graph* graph, int* visited, int* scc, int parent) {
     }
 }
 
+void BFS(int vertex, struct Graph* graph, int* visited, int* scc, int parent) {
+
+    visited[vertex] = 1;
+
+    struct Queue* mainQueue = createQueue(CAPACITY);
+    
+    struct AdjacencyListNode* node = graph->arr[vertex].head;
+    enqueue(mainQueue, node);
+
+    while(!isEmpty(mainQueue)) {
+        
+        node = dequeue(mainQueue);
+
+        while(node != NULL) {
+            if(visited[node->curr] == 0) {
+                visited[node->curr] = 1;
+                enqueue(mainQueue,node);
+            }
+            node = node->next;
+        }
+    }
+
+}
+
 void printSCC(int* scc,int vertices) {
     for(int i=0;i<vertices;i++) {
         printf("SCC of vertex %d :- %d\n",i,scc[i]);
@@ -99,16 +126,11 @@ void Kosaraju(struct Graph* graph){
     //     printf("%d :\tStart time: %d\tEnd time: %d\n",i,start_time[i],end_time[i]);
     // }
 
-    printf("Stack:- ");
-    for(int i=0;i<vertices;i++) {
-        printf("%d ",stack[i]);
-    }
 
     //STEP 2 
     //Graph Transpose
     struct Graph* graph_T;
     graph_T = TransposeGraph(graph);
-    printGraph(graph_T);
 
     //STEP 3
     // DFS in the reverse order
@@ -120,9 +142,6 @@ void Kosaraju(struct Graph* graph){
     for(int i=vertices-1;i>=0;i--) {
         DFS(stack[i],graph_T,visited,scc,-1);
     }
-    //STEP 4
-    //Print SCCs
-    printSCC(scc,vertices);
 };
 
 int main() {

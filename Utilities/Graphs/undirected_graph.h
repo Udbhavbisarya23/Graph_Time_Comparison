@@ -46,7 +46,10 @@ void addEdge(struct Graph* graph,int src,int dest,float weight);
 void printGraph(struct Graph* graph);
 struct Graph* readUndirectedWeightedGraph(char* filename);
 
+void merge(struct Edge* edges, int l, int m, int r);
+void mergeSort(struct Edge* edges, int l, int r);
 struct EdgeList* sortUndirectedWeightedGraph(struct Graph* graph);
+
 void printEdgeList(struct EdgeList* edgelist);
 void swapEdgeList(struct EdgeList* edgelist,int i,int j);
 int partitionEdgeList(struct EdgeList* edgelist,int low, int high);
