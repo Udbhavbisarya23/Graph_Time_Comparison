@@ -12,5 +12,6 @@
 
 void formatUndirectedWeighted(char* filename, char* newFilename);
 void sanitizeUndirectedWeighted(char* oldFilename, char* newFilename);
+void sanitizeBipartite(char* oldFilename, char* newFilename);
 
 #endif

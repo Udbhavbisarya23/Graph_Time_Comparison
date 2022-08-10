@@ -5,7 +5,7 @@ This project works on the parallelization of graph algorithms. THe following gra
 - Minimum Spanning Tree 
 
 ```
-cmake -S . -B _build/
+cmake -DCMAKE_BUILD_TYPE=Debug -S . -B _build/
 cd _build/
 make
 cd Strongly_Connected_Components/

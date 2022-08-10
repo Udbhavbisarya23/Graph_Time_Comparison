@@ -11,5 +11,6 @@
 
 void addRandomWeights(FILE* srcFile, char* buffer, FILE* targetFile);
 void generateweightedGraphs(DIR* currDir, DIR* targetDir, char* actualCurrPath, char* actualTargetPath);
+void generateBipartiteGraphs(DIR* currDir, DIR* targetDir, char* actualCurrPath, char* actualTargetPath);
 
 #endif

@@ -9,6 +9,7 @@
         "unordered_map": "c",
         "unordered_set": "c",
         "vector": "c",
-        "ostream": "c"
+        "ostream": "c",
+        "algorithm": "c"
     }
 }
