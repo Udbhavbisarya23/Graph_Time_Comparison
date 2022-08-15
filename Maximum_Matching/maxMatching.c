@@ -34,7 +34,6 @@ void matchAndUpdate(struct BipartiteGraph* graph, struct Matching* matching,
                     }
                     w = w->next;
                 }
-
                 // Since {u,v} is matched the search is stopped and we break out of the function
                 break;
 
@@ -50,13 +49,16 @@ struct Matching* karpSipser(struct BipartiteGraph* graph) {
     struct Matching* matching = createMatching();
     
     int totalVertices = graph->xVertices + graph->yVertices;
-    int visited[totalVertices];
-    int degree[graph->xVertices];
+
+    int* visited = (int*)malloc(sizeof(int)*totalVertices);
+    int* degree = (int*)malloc(sizeof(int)*(graph->xVertices));
 
     // Setting visited of all nodes to 0
     for(int i=0;i<totalVertices;i++) {
         visited[i] = 0;
     }
+
+    printf("In Karp Sipser\n");
 
     // Add vertices of degree 1 to Q1 and remaining to Q*
     int* degreeOneNodes = (int*)malloc(sizeof(int)*graph->xVertices);
@@ -74,6 +76,8 @@ struct Matching* karpSipser(struct BipartiteGraph* graph) {
         }
     }
 
+    printf("Before match and update\n");
+
     // Match degree=1 vertices, update degrees and look for new degree = 1 vertices
     for(int i=0;i<oneCount;i++) {
         matchAndUpdate(graph,matching,degreeOneNodes[i],visited,degree);
@@ -84,13 +88,19 @@ struct Matching* karpSipser(struct BipartiteGraph* graph) {
         matchAndUpdate(graph,matching,notDegreeOneNodes[i],visited,degree);
     }
 
+    free(degreeOneNodes);
+    free(notDegreeOneNodes);
+    free(degree);
+    free(visited);
+
     return matching;
 }
 
 struct LayeredGraphAndLayer* layeredGraphTS(struct BipartiteGraph* graph, struct Matching* currMatching, int* visited) {
     struct AugmentingPath* currPathList = NULL;
 
-    struct Layer* layerList = createLayer(0);
+    struct Layer* temp = createLayer();
+    struct Layer* layerList = temp;
 
     for(int i=0;i<graph->xVertices;i++) {
         
@@ -108,8 +118,9 @@ struct LayeredGraphAndLayer* layeredGraphTS(struct BipartiteGraph* graph, struct
 
         printf("Before create Layer\n");
 
-        struct Layer* layerK1 = createLayer(0); // Y        
-        struct Layer* layerK2 = createLayer(0); // X
+        struct Layer* layerK1 = createLayer(); // Y
+
+        struct Layer* layerK2 = createLayer(); // X
 
         printf("After create Layer\n");
 
@@ -132,11 +143,11 @@ struct LayeredGraphAndLayer* layeredGraphTS(struct BipartiteGraph* graph, struct
         }
 
         if(layerK1->vertices == NULL || checkUnmatchedVertexInLayer(layerK1,currMatching)) {
-            struct LayeredGraph* graph = createLayeredGraph(k+1,layerList,localEdgeList);
+            struct LayeredGraph* layeredGraph = createLayeredGraph(k+1,layerList,localEdgeList);
             k ++;
             layerList = (struct Layer*)realloc(layerList,sizeof(struct Layer)*k);
             layerList[k-1] = *layerK1;
-            return createLayeredGraphAndLayer(layerK1,graph);
+            return createLayeredGraphAndLayer(layerK1,layeredGraph);
         } else {
             k = k+2;
             layerList = (struct Layer*)realloc(layerList,sizeof(struct Layer)*(k+1));
@@ -180,8 +191,8 @@ struct AugmentingPath* dfs_tfs(struct BipartiteGraph* graph, int curr, int* visi
 
 int hopcraftKarp(struct BipartiteGraph* graph) {
 
-    struct Matching* currMatching = karpSipser(graph);
-    //struct Matching* currMatching = createMatching();
+    // struct Matching* currMatching = karpSipser(graph);
+    struct Matching* currMatching = createMatching();
 
     printf("Initial matching generated\n");
 

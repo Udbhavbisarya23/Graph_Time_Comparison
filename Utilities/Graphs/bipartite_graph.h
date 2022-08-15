@@ -66,7 +66,7 @@ struct Layer {
     int* vertices;
 };
 
-struct Layer* createLayer(int numVertices);
+struct Layer* createLayer();
 void printLayer(struct Layer* layer);
 void insertVertexInLayer(struct Layer* layer, int vertex);
 int checkUnmatchedVertexInLayer(struct Layer* layer, struct Matching* matching);

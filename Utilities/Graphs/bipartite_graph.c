@@ -300,19 +300,15 @@ void insertEdgeInEdgeList(struct UnweightedEdgeList* edgelist, int src, int dest
     edgelist->numEdges ++;
 }
 
-struct Layer* createLayer(int numVertices) {
+struct Layer* createLayer() {
 
     struct Layer* layer = NULL;
 
     layer = (struct Layer*)malloc(sizeof(struct Layer));
 
-    layer->numVertices = numVertices;
-    layer->vertices = NULL;
-
-    if(numVertices != 0) {
-        layer->vertices = (int*)malloc(sizeof(int)*numVertices);
-    }
-
+    layer->numVertices = 0;
+    layer->vertices = malloc(sizeof layer->vertices * 1);
+    
     return layer;
 }
 
@@ -326,11 +322,11 @@ void printLayer(struct Layer* layer) {
 
 void insertVertexInLayer(struct Layer* layer, int vertex) {
     if(layer->numVertices == 0) {
-        layer->vertices = (int*)malloc(sizeof(int));
+        layer->vertices = malloc(sizeof *layer->vertices * 1);
     }
 
     if(layer->numVertices == sizeof(layer->vertices)/sizeof(int)) {
-        layer->vertices = (int*)realloc(layer->vertices,(layer->numVertices*2)*sizeof(int));
+        layer->vertices = realloc(layer->vertices,sizeof *layer->vertices *layer->numVertices*2);
     }
 
     layer->vertices[layer->numVertices] = vertex;
