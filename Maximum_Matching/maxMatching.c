@@ -112,17 +112,11 @@ struct LayeredGraphAndLayer* layeredGraphTS(struct BipartiteGraph* graph, struct
     int k = 0;
     int currLayerKSize = layerList[0].numVertices;
 
-    printLayer(layerList);
-
     while(1) {
-
-        printf("Before create Layer\n");
 
         struct Layer* layerK1 = createLayer(); // Y
 
         struct Layer* layerK2 = createLayer(); // X
-
-        printf("After create Layer\n");
 
         struct UnweightedEdgeList* localEdgeList = createUnweightedEdgeList(0);
 
@@ -130,31 +124,39 @@ struct LayeredGraphAndLayer* layeredGraphTS(struct BipartiteGraph* graph, struct
             int currNode = layerList[k].vertices[i];
             struct AdjacencyListNodeBipartite* v = graph->x[currNode].head;
 
-            if(visited[v->curr] == 0) {
-                insertVertexInLayer(layerK1,v->curr);
-                insertEdgeInEdgeList(localEdgeList,currNode,v->curr);
+            while(v != NULL) {
 
-                int vertexMatch = search(currMatching->yMappings,v->curr,currMatching->yVertices);
-                if(vertexMatch != -1) {
-                    insertEdgeInEdgeList(localEdgeList,vertexMatch,v->curr);
-                    insertVertexInLayer(layerK2,vertexMatch);
+                if(visited[v->curr] == 0) {
+                    visited[v->curr] = 1;
+                    insertVertexInLayer(layerK1,v->curr);
+                    insertEdgeInEdgeList(localEdgeList,currNode,v->curr);
+
+                    int vertexMatch = search(currMatching->yMappings,v->curr,currMatching->yVertices);
+                    if(vertexMatch != -1) {
+                        insertEdgeInEdgeList(localEdgeList,v->curr,vertexMatch);
+                        insertVertexInLayer(layerK2,vertexMatch);
+                    }
                 }
+
+                v = v->next;
             }
         }
 
-        if(layerK1->vertices == NULL || checkUnmatchedVertexInLayer(layerK1,currMatching)) {
-            struct LayeredGraph* layeredGraph = createLayeredGraph(k+1,layerList,localEdgeList);
+        printf("End of For loop in layered graph ts\n");
+
+        if(layerK1->numVertices == 0 || checkUnmatchedVertexInLayer(layerK1,currMatching)) {
             k ++;
-            layerList = (struct Layer*)realloc(layerList,sizeof(struct Layer)*k);
-            layerList[k-1] = *layerK1;
+            layerList = (struct Layer*)realloc(layerList,sizeof(struct Layer)*(k+1));
+            layerList[k] = *layerK1;
+            struct LayeredGraph* layeredGraph = createLayeredGraph(k,layerList,localEdgeList);
             return createLayeredGraphAndLayer(layerK1,layeredGraph);
         } else {
             k = k+2;
             layerList = (struct Layer*)realloc(layerList,sizeof(struct Layer)*(k+1));
-            layerList[k-2] = *layerK1;
-            layerList[k-1] = *layerK2;
-        }
-        
+            layerList[k-1] = *layerK1;
+            layerList[k] = *layerK2;
+            currLayerKSize = layerK2->numVertices;
+        }   
     }
 
 }
@@ -191,10 +193,10 @@ struct AugmentingPath* dfs_tfs(struct BipartiteGraph* graph, int curr, int* visi
 
 int hopcraftKarp(struct BipartiteGraph* graph) {
 
-    // struct Matching* currMatching = karpSipser(graph);
-    struct Matching* currMatching = createMatching();
-
-    printf("Initial matching generated\n");
+    struct Matching* currMatching = karpSipser(graph);
+    //struct Matching* currMatching = createMatching();
+    struct AugmentingPathList* augPathList = createAugPathList();
+    struct LayeredGraphAndLayer* finLayerGraph;
 
     while(1) {
 
@@ -204,12 +206,16 @@ int hopcraftKarp(struct BipartiteGraph* graph) {
             visited[i] = 0;
         }
 
-        struct AugmentingPathList* augPathList = NULL;
         int currSize = 0;
+        augPathList->numAugPaths = 0;
+        augPathList->pathList = realloc(augPathList->pathList,sizeof(struct AugmentingPath));
+        augPathList->maxNumberOfPaths = 1;
 
-        printf("Before layeredGraphTS\n");
-        struct LayeredGraphAndLayer* finLayerGraph = layeredGraphTS(graph,currMatching,visited);
-        printf("After layeredGraphTS\n");
+
+        printf("Before LayeredGraphTS\n");
+        finLayerGraph = layeredGraphTS(graph,currMatching,visited);
+        printf("After LayeredGraphTS\n");
+
 
         for(int i=0;i<totalVertices;i++) {
             visited[i] = 0;
@@ -222,18 +228,25 @@ int hopcraftKarp(struct BipartiteGraph* graph) {
                 struct AugmentingPath* currPath = dfs_tfs(graph,currVertex,visited,currMatching);
                 reverseAugmentingPath(currPath);
                 insertPathInPathList(currPath,augPathList);
+                
             }
         }
+        xorMatchingAndPathList(currMatching,augPathList,graph->xVertices);
+        printMatching(currMatching);
 
-        xorMatchingAndPathList(currMatching,augPathList);
-
-        if(augPathList == NULL) {
+        printf("Number of aug path list vertices:- %d\n",augPathList->numAugPaths);
+        if(augPathList->numAugPaths == 0 || augPathList == NULL) {
             printf("List is NULL\n");
             break;
         }
 
     }
-    return currMatching->currSize;
+
+    int numberOfEdges = currMatching->currSize;
+    freeMatching(currMatching);
+    freeAugPathList(augPathList);
+    freeLayeredGraphAndLayer(finLayerGraph);
+    return numberOfEdges;
 }
 
 int main() {
@@ -259,4 +272,8 @@ int main() {
     time_end = TimeValue_Final.tv_sec * 1000000 + TimeValue_Final.tv_usec;
     time_overhead = (time_end - time_start)/1000000.0;
     printf("Sequential SCC Time: %lf\n", time_overhead);
+
+    freeBipartiteGraph(graph);
+
+    return 0;
 }

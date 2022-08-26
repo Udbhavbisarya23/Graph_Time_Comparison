@@ -16,7 +16,7 @@ void insert(struct HashItem* mp,int key,int value,int vertices);
 
 void update(struct HashItem* mp,int key,int newVal, int vertices);
 
-struct HashItem* delete(struct HashItem* mp,int key, int vertices);
+void delete(struct HashItem* mp,int key, int vertices);
 
 void printMap(struct HashItem* mp,int vertices);
 
