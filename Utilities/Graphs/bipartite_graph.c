@@ -248,6 +248,7 @@ void printMatching(struct Matching* matching) {
 void addEdgeToMatching(struct Matching* matching, int src, int dest) {
     if(matching->maxSize == 0) {
         matching->edges = (struct UnweightedEdge*)malloc(sizeof(struct UnweightedEdge));
+        matching->maxSize = 1;
         
         matching->xMappings = (struct HashItem*)malloc(sizeof(struct HashItem));
         matching->xMappings[0].key = -1;
@@ -353,6 +354,11 @@ void insertEdgeInEdgeList(struct UnweightedEdgeList* edgelist, int src, int dest
     edgelist->edges[edgelist->numEdges].dest = dest;
 
     edgelist->numEdges ++;
+}
+
+void freeUnweightedEdgeList(struct UnweightedEdgeList* edgeList) {
+    free(edgeList->edges);
+    free(edgeList);
 }
 
 struct Layer* createLayer() {
@@ -543,33 +549,58 @@ void xorMatchingAndPathList(struct Matching* matching, struct AugmentingPathList
 
         struct AugmentingPath currPath = augPathList->pathList[i];
 
-        // Go through the path, if the edge exists in the matching then eliminate it
+        // Go through the path, and remove all the matchings in the path
         for(int j=0;j<currPath.numVertices;j++) {
-            int currVertex = currPath.nodeSequence[j];
-            int matchedElement;
             
+            int mappedEle = search(matching->xMappings,currPath.nodeSequence[j],matching->xVertices);
+            if(mappedEle != -1 ) {
+                updateMatching(matching,currPath.nodeSequence[j],mappedEle);
+                continue;
+            }
 
-            if(currVertex < xVertices) {
-                matchedElement = search(matching->xMappings,currVertex,matching->xVertices);
-
-                if(matchedElement != -1) {
-                    //updateMatching(matching,currVertex,matchedElement);
-                } else {
-                    if(j != currPath.numVertices-1) {
-                        addEdgeToMatching(matching,currVertex,currPath.nodeSequence[j+1]);
-                    }
-                }
-            } else {
-                matchedElement = search(matching->yMappings,currVertex,matching->yVertices);
-                if(matchedElement != -1) {
-                    //updateMatching(matching,matchedElement,currVertex);
-                } else {
-                    if(j != currPath.numVertices-1) {
-                        addEdgeToMatching(matching,currPath.nodeSequence[j+1],currVertex);
-                    }
-                }
+            mappedEle = search(matching->yMappings,currPath.nodeSequence[j],matching->yVertices);
+            if(mappedEle != -1 ) {
+                updateMatching(matching,mappedEle,currPath.nodeSequence[j]);
+                continue;
             }
         }
 
+        for(int j=0;j<currPath.numVertices;j=j+2) {
+            addEdgeToMatching(matching,currPath.nodeSequence[j+1],currPath.nodeSequence[j]);
+        }
+
+    }
+}
+
+void parallelXorMatchingAndPathList(struct Matching* matching, struct AugmentingPathList* augPathList, int xVertices) {
+    
+    #pragma omp parallel
+    {
+        #pragma omp for
+        for(int i=0;i<augPathList->numAugPaths;i++) {
+
+            struct AugmentingPath currPath = augPathList->pathList[i];
+
+            // Go through the path, and remove all the matchings in the path
+            for(int j=0;j<currPath.numVertices;j++) {
+                
+                int mappedEle = search(matching->xMappings,currPath.nodeSequence[j],matching->xVertices);
+                if(mappedEle != -1 ) {
+                    updateMatching(matching,currPath.nodeSequence[j],mappedEle);
+                    continue;
+                }
+
+                mappedEle = search(matching->yMappings,currPath.nodeSequence[j],matching->yVertices);
+                if(mappedEle != -1 ) {
+                    updateMatching(matching,mappedEle,currPath.nodeSequence[j]);
+                    continue;
+                }
+            }
+
+            for(int j=0;j<currPath.numVertices;j=j+2) {
+                addEdgeToMatching(matching,currPath.nodeSequence[j+1],currPath.nodeSequence[j]);
+            }
+
+        }
     }
 }

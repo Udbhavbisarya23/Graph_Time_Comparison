@@ -69,6 +69,7 @@ struct UnweightedEdgeList {
 
 struct UnweightedEdgeList* createUnweightedEdgeList(int numEdges);
 void insertEdgeInEdgeList(struct UnweightedEdgeList* edgeList, int src, int dest);
+void freeUnweightedEdgeList(struct UnweightedEdgeList* edgeList);
 
 struct Layer {
     int numVertices;
@@ -122,5 +123,6 @@ void insertPathInPathList(struct AugmentingPath* currPath, struct AugmentingPath
 void freeAugPathList(struct AugmentingPathList* currPathList);
 
 void xorMatchingAndPathList(struct Matching* matching, struct AugmentingPathList* augPathList, int xVertices);
+void parallelXorMatchingAndPathList(struct Matching* matching, struct AugmentingPathList* augPathList, int xVertices);
 
 #endif

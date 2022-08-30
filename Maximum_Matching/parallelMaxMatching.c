@@ -7,29 +7,51 @@
 #include "../Utilities/format_file/format_file.h"
 #include "../Utilities/Graphs/bipartite_graph.h"
 
+int atomicFetchAdd(int *visited, int ind, int num) {
+
+    int currNum = visited[ind];
+    visited[ind] += num;
+    return currNum;
+}
+
 void matchAndUpdate(struct BipartiteGraph* graph, struct Matching* matching, 
                     int u, int* visited, 
                     int* degree) {
     
-    if(visited[u] == 0) {
-        visited[u] = 1;
+    int uCheck;
+    #pragma omp critical (fetchAdd)
+    {
+        uCheck = atomicFetchAdd(visited,u,1);
+    }
+    if(uCheck == 0) {
 
         struct AdjacencyListNodeBipartite* v = graph->x[u].head;
         while(v) {            
             // If v is unvisited
-            if(visited[v->curr] == 0) {
-                //Update the visited array
-                visited[v->curr] = 1;
-
+            int vCheck;
+            #pragma omp critical (fetchAdd)
+            {
+                vCheck = atomicFetchAdd(visited,v->curr,1);
+            }
+            if(vCheck == 0) {
                 //Updating matching 
-                addEdgeToMatching(matching,u,v->curr);        
+                #pragma omp critical (matchingUpdate)
+                {
+                    addEdgeToMatching(matching,u,v->curr);   
+                }     
                 
                 // Go through all w (belonging to set X) adjacent to v(belonging to set Y)
                 int yInd = v->curr - graph->xVertices;
                 struct AdjacencyListNodeBipartite* w = graph->y[yInd].head;
                 while(w) {
-                    degree[w->curr] --;
-                    if(degree[w->curr] == 1) {
+
+                    int wCheck;
+                    #pragma omp critical (fetchAdd)
+                    {
+                        wCheck = atomicFetchAdd(degree,w->curr,-1);
+                    }
+
+                    if(wCheck == 2) {
                         matchAndUpdate(graph,matching,w->curr,visited,degree);
                     }
                     w = w->next;
@@ -44,7 +66,6 @@ void matchAndUpdate(struct BipartiteGraph* graph, struct Matching* matching,
     }
 }
 
-
 struct Matching* karpSipser(struct BipartiteGraph* graph) {
     struct Matching* matching = createMatching();
     
@@ -54,8 +75,12 @@ struct Matching* karpSipser(struct BipartiteGraph* graph) {
     int* degree = (int*)malloc(sizeof(int)*(graph->xVertices));
 
     // Setting visited of all nodes to 0
-    for(int i=0;i<totalVertices;i++) {
-        visited[i] = 0;
+    #pragma omp parallel default(none) shared(totalVertices,visited)
+    {
+        #pragma omp for
+        for(int i=0;i<totalVertices;i++) {
+            visited[i] = 0;
+        }
     }
 
     printf("In Karp Sipser\n");
@@ -64,29 +89,47 @@ struct Matching* karpSipser(struct BipartiteGraph* graph) {
     int* degreeOneNodes = (int*)malloc(sizeof(int)*graph->xVertices);
     int* notDegreeOneNodes = (int*)malloc(sizeof(int)*graph->xVertices);
     int oneCount = 0, notOneCount = 0;
-    for(int i=0;i<graph->xVertices;i++) {
-        degree[i] = calculateDegree(graph,i);
 
-        if(degree[i] == 1) {
-            degreeOneNodes[oneCount] = i;
-            oneCount ++;
-        } else {
-            notDegreeOneNodes[notOneCount] = i;
-            notOneCount ++;
+    #pragma omp parallel default(none) shared(graph,degree,degreeOneNodes,notDegreeOneNodes,oneCount,notOneCount)
+    {
+        #pragma omp for
+        for(int i=0;i<graph->xVertices;i++) {
+            degree[i] = calculateDegree(graph,i);
+
+            #pragma omp critical (degreeUpdate)
+            {
+                if(degree[i] == 1) {
+                    degreeOneNodes[oneCount] = i;
+                    oneCount ++;
+                } else {
+                    notDegreeOneNodes[notOneCount] = i;
+                    notOneCount ++;
+                }
+            }
         }
     }
 
     printf("Before match and update\n");
 
     // Match degree=1 vertices, update degrees and look for new degree = 1 vertices
-    for(int i=0;i<oneCount;i++) {
-        matchAndUpdate(graph,matching,degreeOneNodes[i],visited,degree);
+    #pragma omp parallel default(none) shared(graph,oneCount, degreeOneNodes, visited, degree, matching)
+    {
+        #pragma omp for
+        for(int i=0;i<oneCount;i++) {
+            matchAndUpdate(graph,matching,degreeOneNodes[i],visited,degree);
+        }
     }
 
     // Match higher degree vertices, update degrees and look for new degree = 1 vertices
-    for(int i=0;i<notOneCount;i++) {
-        matchAndUpdate(graph,matching,notDegreeOneNodes[i],visited,degree);
+    #pragma omp parallel default(none) shared(graph,notOneCount, notDegreeOneNodes, visited, degree, matching)
+    {
+        #pragma omp for
+        for(int i=0;i<notOneCount;i++) {
+            matchAndUpdate(graph,matching,notDegreeOneNodes[i],visited,degree);
+        }
     }
+
+    printf("After match and update\n");
 
     free(degreeOneNodes);
     free(notDegreeOneNodes);
@@ -118,37 +161,66 @@ struct LayeredGraphAndLayer* layeredGraphTS(struct BipartiteGraph* graph, struct
 
         struct Layer* layerK2 = createLayer(); // X
 
-        struct UnweightedEdgeList* localEdgeList = createUnweightedEdgeList(0);
+        struct UnweightedEdgeList* edgeList = createUnweightedEdgeList(0);
 
-        for(int i=0;i<currLayerKSize;i++) {
-            int currNode = layerList[k].vertices[i];
-            struct AdjacencyListNodeBipartite* v = graph->x[currNode].head;
+        #pragma omp parallel default(none) shared(currMatching, graph, visited, layerK1, layerK2, layerList, edgeList, currLayerKSize, k)
+        {
+            #pragma omp for
+            for(int i=0;i<currLayerKSize;i++) {
+                int currNode = layerList[k].vertices[i];
+                struct AdjacencyListNodeBipartite* v = graph->x[currNode].head;
 
-            while(v != NULL) {
+                struct Layer* localK1 = createLayer();
+                struct Layer* localK2 = createLayer();
+                struct UnweightedEdgeList* localEdgeList = createUnweightedEdgeList(0);
 
-                if(visited[v->curr] == 0) {
-                    visited[v->curr] = 1;
-                    insertVertexInLayer(layerK1,v->curr);
-                    insertEdgeInEdgeList(localEdgeList,currNode,v->curr);
+                while(v != NULL) {
 
-                    int vertexMatch = search(currMatching->yMappings,v->curr,currMatching->yVertices);
-                    if(vertexMatch != -1) {
-                        insertEdgeInEdgeList(localEdgeList,v->curr,vertexMatch);
-                        insertVertexInLayer(layerK2,vertexMatch);
+                    int vCheck;
+                    #pragma omp critical (fetchAdd)
+                    {
+                        vCheck = atomicFetchAdd(visited,v->curr,1);
                     }
+
+                    if(vCheck == 0) {
+                        insertVertexInLayer(localK1,v->curr);
+                        insertEdgeInEdgeList(localEdgeList,currNode,v->curr);
+
+                        int vertexMatch = search(currMatching->yMappings,v->curr,currMatching->yVertices);
+                        if(vertexMatch != -1) {
+                            insertEdgeInEdgeList(localEdgeList,v->curr,vertexMatch);
+                            insertVertexInLayer(localK2,vertexMatch);
+                        }
+                    }
+
+                    v = v->next;
                 }
 
-                v = v->next;
+                #pragma omp critical (layerUpdation)
+                {
+                    for(int j=0;j<localK1->numVertices;j++) {
+                        insertVertexInLayer(layerK1,localK1->vertices[j]);
+                    }
+
+                    for(int j=0;j<localK2->numVertices;j++) {
+                        insertVertexInLayer(layerK2,localK2->vertices[j]);
+                    }
+
+                    for(int j=0;j<localEdgeList->numEdges;j++) {
+                        insertEdgeInEdgeList(edgeList,localEdgeList->edges[j].source,localEdgeList->edges[j].dest);
+                    }
+                }
+                freeLayer(localK1);
+                freeLayer(localK2);
+                freeUnweightedEdgeList(localEdgeList);
             }
         }
-
         printf("End of For loop in layered graph ts\n");
-
         if(layerK1->numVertices == 0 || checkUnmatchedVertexInLayer(layerK1,currMatching)) {
             k ++;
             layerList = (struct Layer*)realloc(layerList,sizeof(struct Layer)*(k+1));
             layerList[k] = *layerK1;
-            struct LayeredGraph* layeredGraph = createLayeredGraph(k,layerList,localEdgeList);
+            struct LayeredGraph* layeredGraph = createLayeredGraph(k,layerList,edgeList);
             return createLayeredGraphAndLayer(layerK1,layeredGraph);
         } else {
             k = k+2;
@@ -166,8 +238,7 @@ struct AugmentingPath* dfs_tfs(struct BipartiteGraph* graph, int curr, int* visi
 
     while(adjU) {
         
-        if(visited[adjU->curr] == 0) {
-            visited[adjU->curr] = 1;
+        if(atomicFetchAdd(visited,adjU->curr,1) == 0) {
 
             int matchedVertex = search(currMatching->xMappings,adjU->curr,currMatching->xVertices);
             if(matchedVertex == -1) {
@@ -233,7 +304,7 @@ int hopcraftKarp(struct BipartiteGraph* graph) {
                 
             }
         }
-        xorMatchingAndPathList(currMatching,augPathList,graph->xVertices);
+        parallelXorMatchingAndPathList(currMatching,augPathList,graph->xVertices);
         // printMatching(currMatching);
 
         printf("Number of aug path list vertices:- %d\n",augPathList->numAugPaths);
@@ -273,7 +344,7 @@ int main() {
     time_start = TimeValue_Start.tv_sec * 1000000 + TimeValue_Start.tv_usec;
     time_end = TimeValue_Final.tv_sec * 1000000 + TimeValue_Final.tv_usec;
     time_overhead = (time_end - time_start)/1000000.0;
-    printf("Sequential SCC Time: %lf\n", time_overhead);
+    printf("Parallel SCC Time: %lf\n", time_overhead);
 
     freeBipartiteGraph(graph);
 

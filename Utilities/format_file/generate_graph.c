@@ -5,6 +5,7 @@
 #include<time.h>
 #include<dirent.h>
 #include<errno.h>
+#include<unistd.h>
 
 #include "generate_graph.h"
 #include "./format_file.h"
@@ -168,6 +169,10 @@ void generateBipartiteGraphs(DIR* currDir, DIR* targetDir, char* actualCurrPath,
         strcpy(targetFileName,actualTargetPath);
         strcat(targetFileName,"/");
         strcat(targetFileName,in_file->d_name);
+
+        if(access(targetFileName,F_OK) == 0) {
+            continue;
+        }
 
         if(strcmp(in_file->d_name,"twitter_combined.txt")) {
             formatUndirectedWeighted(fileName,intermediateFileName);
