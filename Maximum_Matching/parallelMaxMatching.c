@@ -3,37 +3,21 @@
 #include<string.h>
 #include<sys/time.h>
 #include<time.h>
+#include<omp.h>
 
 #include "../Utilities/format_file/format_file.h"
 #include "../Utilities/Graphs/bipartite_graph.h"
-
-int atomicFetchAdd(int *visited, int ind, int num) {
-
-    int currNum = visited[ind];
-    visited[ind] += num;
-    return currNum;
-}
 
 void matchAndUpdate(struct BipartiteGraph* graph, struct Matching* matching, 
                     int u, int* visited, 
                     int* degree) {
     
-    int uCheck;
-    #pragma omp critical (fetchAdd)
-    {
-        uCheck = atomicFetchAdd(visited,u,1);
-    }
-    if(uCheck == 0) {
+    if(__sync_fetch_and_add(&visited[u],1) == 0) {
 
         struct AdjacencyListNodeBipartite* v = graph->x[u].head;
         while(v) {            
             // If v is unvisited
-            int vCheck;
-            #pragma omp critical (fetchAdd)
-            {
-                vCheck = atomicFetchAdd(visited,v->curr,1);
-            }
-            if(vCheck == 0) {
+            if(__sync_fetch_and_add(&visited[v->curr],1) == 0) {
                 //Updating matching 
                 #pragma omp critical (matchingUpdate)
                 {
@@ -44,14 +28,7 @@ void matchAndUpdate(struct BipartiteGraph* graph, struct Matching* matching,
                 int yInd = v->curr - graph->xVertices;
                 struct AdjacencyListNodeBipartite* w = graph->y[yInd].head;
                 while(w) {
-
-                    int wCheck;
-                    #pragma omp critical (fetchAdd)
-                    {
-                        wCheck = atomicFetchAdd(degree,w->curr,-1);
-                    }
-
-                    if(wCheck == 2) {
+                    if(__sync_fetch_and_add(&degree[w->curr],-1) == 2) {
                         matchAndUpdate(graph,matching,w->curr,visited,degree);
                     }
                     w = w->next;
@@ -65,6 +42,7 @@ void matchAndUpdate(struct BipartiteGraph* graph, struct Matching* matching,
         }
     }
 }
+
 
 struct Matching* karpSipser(struct BipartiteGraph* graph) {
     struct Matching* matching = createMatching();
@@ -90,25 +68,22 @@ struct Matching* karpSipser(struct BipartiteGraph* graph) {
     int* notDegreeOneNodes = (int*)malloc(sizeof(int)*graph->xVertices);
     int oneCount = 0, notOneCount = 0;
 
-    #pragma omp parallel default(none) shared(graph,degree,degreeOneNodes,notDegreeOneNodes,oneCount,notOneCount)
-    {
-        #pragma omp for
-        for(int i=0;i<graph->xVertices;i++) {
-            degree[i] = calculateDegree(graph,i);
+    for(int i=0;i<graph->xVertices;i++) {
+        degree[i] = calculateDegree(graph,i);
+    }
 
-            #pragma omp critical (degreeUpdate)
-            {
-                if(degree[i] == 1) {
-                    degreeOneNodes[oneCount] = i;
-                    oneCount ++;
-                } else {
-                    notDegreeOneNodes[notOneCount] = i;
-                    notOneCount ++;
-                }
-            }
+    for(int i=0;i<graph->xVertices;i++) {
+
+        if(degree[i] == 1) {
+            degreeOneNodes[oneCount] = i;
+            oneCount ++;
+        } else {
+            notDegreeOneNodes[notOneCount] = i;
+            notOneCount ++;
         }
     }
 
+    printf("Nodes of degree 1:-%d\nNodes of other degrees:-%d\n",oneCount,notOneCount);
     printf("Before match and update\n");
 
     // Match degree=1 vertices, update degrees and look for new degree = 1 vertices
@@ -129,13 +104,11 @@ struct Matching* karpSipser(struct BipartiteGraph* graph) {
         }
     }
 
-    printf("After match and update\n");
 
     free(degreeOneNodes);
     free(notDegreeOneNodes);
     free(degree);
     free(visited);
-
     return matching;
 }
 
@@ -165,24 +138,29 @@ struct LayeredGraphAndLayer* layeredGraphTS(struct BipartiteGraph* graph, struct
 
         #pragma omp parallel default(none) shared(currMatching, graph, visited, layerK1, layerK2, layerList, edgeList, currLayerKSize, k)
         {
-            #pragma omp for
-            for(int i=0;i<currLayerKSize;i++) {
+
+            struct Layer* localK1 = createLayer();
+            struct Layer* localK2 = createLayer();
+            struct UnweightedEdgeList* localEdgeList = createUnweightedEdgeList(0);
+        
+            int numThreads = omp_get_num_threads();
+            int tid = omp_get_thread_num();
+
+            int start = (currLayerKSize * tid)/numThreads;
+            int end;
+            if(tid == numThreads - 1) {
+                end = currLayerKSize;
+            } else {
+                end = (currLayerKSize * (tid+1))/numThreads;
+            }
+
+            for(int i=start;i<end;i++) {
                 int currNode = layerList[k].vertices[i];
                 struct AdjacencyListNodeBipartite* v = graph->x[currNode].head;
 
-                struct Layer* localK1 = createLayer();
-                struct Layer* localK2 = createLayer();
-                struct UnweightedEdgeList* localEdgeList = createUnweightedEdgeList(0);
-
                 while(v != NULL) {
 
-                    int vCheck;
-                    #pragma omp critical (fetchAdd)
-                    {
-                        vCheck = atomicFetchAdd(visited,v->curr,1);
-                    }
-
-                    if(vCheck == 0) {
+                    if(__sync_fetch_and_add(&visited[v->curr],1) == 0) {
                         insertVertexInLayer(localK1,v->curr);
                         insertEdgeInEdgeList(localEdgeList,currNode,v->curr);
 
@@ -195,27 +173,27 @@ struct LayeredGraphAndLayer* layeredGraphTS(struct BipartiteGraph* graph, struct
 
                     v = v->next;
                 }
-
-                #pragma omp critical (layerUpdation)
-                {
-                    for(int j=0;j<localK1->numVertices;j++) {
-                        insertVertexInLayer(layerK1,localK1->vertices[j]);
-                    }
-
-                    for(int j=0;j<localK2->numVertices;j++) {
-                        insertVertexInLayer(layerK2,localK2->vertices[j]);
-                    }
-
-                    for(int j=0;j<localEdgeList->numEdges;j++) {
-                        insertEdgeInEdgeList(edgeList,localEdgeList->edges[j].source,localEdgeList->edges[j].dest);
-                    }
-                }
-                freeLayer(localK1);
-                freeLayer(localK2);
-                freeUnweightedEdgeList(localEdgeList);
             }
+
+            #pragma omp critical (layerUpdation)
+            {
+                for(int j=0;j<localK1->numVertices;j++) {
+                    insertVertexInLayer(layerK1,localK1->vertices[j]);
+                }
+
+                for(int j=0;j<localK2->numVertices;j++) {
+                    insertVertexInLayer(layerK2,localK2->vertices[j]);
+                }
+
+                for(int j=0;j<localEdgeList->numEdges;j++) {
+                    insertEdgeInEdgeList(edgeList,localEdgeList->edges[j].source,localEdgeList->edges[j].dest);
+                }
+            }
+            freeLayer(localK1);
+            freeLayer(localK2);
+            freeUnweightedEdgeList(localEdgeList);
         }
-        printf("End of For loop in layered graph ts\n");
+        
         if(layerK1->numVertices == 0 || checkUnmatchedVertexInLayer(layerK1,currMatching)) {
             k ++;
             layerList = (struct Layer*)realloc(layerList,sizeof(struct Layer)*(k+1));
@@ -238,7 +216,7 @@ struct AugmentingPath* dfs_tfs(struct BipartiteGraph* graph, int curr, int* visi
 
     while(adjU) {
         
-        if(atomicFetchAdd(visited,adjU->curr,1) == 0) {
+        if( __sync_fetch_and_add(&visited[adjU->curr],1) == 0) {
 
             int matchedVertex = search(currMatching->xMappings,adjU->curr,currMatching->xVertices);
             if(matchedVertex == -1) {
@@ -294,19 +272,35 @@ int hopcraftKarp(struct BipartiteGraph* graph) {
             visited[i] = 0;
         }
 
+        //Retrieving the unmatchedVertices in the last layer
+        int *unmatchedVertices = malloc(sizeof(int) * finLayerGraph->layerk1->numVertices);
+        int numElements = 0;
+
         for(int i=0;i<finLayerGraph->layerk1->numVertices;i++) {
             int currVertex = finLayerGraph->layerk1->vertices[i];
 
             if(search(currMatching->yMappings,currVertex,currMatching->yVertices) == -1) {
-                struct AugmentingPath* currPath = dfs_tfs(graph,currVertex,visited,currMatching);
-                reverseAugmentingPath(currPath);
-                insertPathInPathList(currPath,augPathList);
-                
+                unmatchedVertices[numElements] = currVertex;
+                numElements ++;
             }
         }
-        parallelXorMatchingAndPathList(currMatching,augPathList,graph->xVertices);
-        // printMatching(currMatching);
+        unmatchedVertices = realloc(unmatchedVertices,sizeof(int) * numElements);
 
+        #pragma omp parallel default(none) shared(unmatchedVertices, numElements, currMatching, graph, visited, augPathList)
+        {
+            #pragma omp for
+            for(int i=0;i<numElements;i++) {
+                int currVertex = unmatchedVertices[i];
+                struct AugmentingPath* currPath = dfs_tfs(graph,currVertex,visited,currMatching);
+                reverseAugmentingPath(currPath);
+                insertPathInPathList(currPath,augPathList);                  
+            }
+        }
+        xorMatchingAndPathList(currMatching,augPathList,graph->xVertices);
+        // printMatching(currMatching);
+        // printAugPathList(augPathList);
+
+        free(unmatchedVertices);
         printf("Number of aug path list vertices:- %d\n",augPathList->numAugPaths);
         if(augPathList->numAugPaths == 0 || augPathList == NULL) {
             printf("List is NULL\n");
@@ -323,7 +317,7 @@ int hopcraftKarp(struct BipartiteGraph* graph) {
 }
 
 int main() {
-    char* newFilename = "../../Maximum_Matching/Bipartite_Graphs_sanitized/out.opsahl-collaboration";
+    char* newFilename = "../../Maximum_Matching/Bipartite_Graphs_sanitized/out.bag-kos";
     struct BipartiteGraph* graph = readBipartiteGraph(newFilename);
     //printBipartiteGraph(graph);
     //struct EdgeList* sorted = sortUndirectedWeightedGraph(graph);

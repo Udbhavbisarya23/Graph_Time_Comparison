@@ -123,6 +123,5 @@ void insertPathInPathList(struct AugmentingPath* currPath, struct AugmentingPath
 void freeAugPathList(struct AugmentingPathList* currPathList);
 
 void xorMatchingAndPathList(struct Matching* matching, struct AugmentingPathList* augPathList, int xVertices);
-void parallelXorMatchingAndPathList(struct Matching* matching, struct AugmentingPathList* augPathList, int xVertices);
 
 #endif

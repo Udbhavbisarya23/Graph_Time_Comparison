@@ -7,7 +7,8 @@ find_package(Threads REQUIRED)
 
 target_link_libraries(maxMatching PRIVATE
     format_file
-    bipartite_graph)
+    bipartite_graph
+    OpenMP::OpenMP_C)
 
 target_link_libraries(parallelMaxMatching PRIVATE
     format_file

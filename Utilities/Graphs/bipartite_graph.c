@@ -302,7 +302,6 @@ void updateMatching(struct Matching* matching, int x, int y) {
         if(matching->edges[i].source == x && matching->edges[i].dest == y) {
             // swap with last element and realloc
             count ++;
-            
             int temp = matching->edges[i].source;
             matching->edges[i].source = matching->edges[matching->currSize-count].source;
             matching->edges[matching->currSize-count].source = temp;
@@ -310,6 +309,7 @@ void updateMatching(struct Matching* matching, int x, int y) {
             temp = matching->edges[i].dest;
             matching->edges[i].dest = matching->edges[matching->currSize-count].dest;
             matching->edges[matching->currSize-count].dest = temp;
+            break;
 
         }
     }
@@ -512,6 +512,7 @@ void printAugPathList(struct AugmentingPathList* list) {
 
     for(int i=0;i<list->numAugPaths;i++) {
         printAugmentingPath(&list->pathList[i]);
+        printf("\n");
     }
     printf("\n");
 }
@@ -550,57 +551,17 @@ void xorMatchingAndPathList(struct Matching* matching, struct AugmentingPathList
         struct AugmentingPath currPath = augPathList->pathList[i];
 
         // Go through the path, and remove all the matchings in the path
-        for(int j=0;j<currPath.numVertices;j++) {
-            
-            int mappedEle = search(matching->xMappings,currPath.nodeSequence[j],matching->xVertices);
-            if(mappedEle != -1 ) {
-                updateMatching(matching,currPath.nodeSequence[j],mappedEle);
-                continue;
-            }
+        for(int j=0;j<currPath.numVertices;j+=2) {
 
-            mappedEle = search(matching->yMappings,currPath.nodeSequence[j],matching->yVertices);
+            int mappedEle = search(matching->yMappings,currPath.nodeSequence[j],matching->yVertices);
             if(mappedEle != -1 ) {
                 updateMatching(matching,mappedEle,currPath.nodeSequence[j]);
                 continue;
             }
         }
-
         for(int j=0;j<currPath.numVertices;j=j+2) {
             addEdgeToMatching(matching,currPath.nodeSequence[j+1],currPath.nodeSequence[j]);
         }
 
-    }
-}
-
-void parallelXorMatchingAndPathList(struct Matching* matching, struct AugmentingPathList* augPathList, int xVertices) {
-    
-    #pragma omp parallel
-    {
-        #pragma omp for
-        for(int i=0;i<augPathList->numAugPaths;i++) {
-
-            struct AugmentingPath currPath = augPathList->pathList[i];
-
-            // Go through the path, and remove all the matchings in the path
-            for(int j=0;j<currPath.numVertices;j++) {
-                
-                int mappedEle = search(matching->xMappings,currPath.nodeSequence[j],matching->xVertices);
-                if(mappedEle != -1 ) {
-                    updateMatching(matching,currPath.nodeSequence[j],mappedEle);
-                    continue;
-                }
-
-                mappedEle = search(matching->yMappings,currPath.nodeSequence[j],matching->yVertices);
-                if(mappedEle != -1 ) {
-                    updateMatching(matching,mappedEle,currPath.nodeSequence[j]);
-                    continue;
-                }
-            }
-
-            for(int j=0;j<currPath.numVertices;j=j+2) {
-                addEdgeToMatching(matching,currPath.nodeSequence[j+1],currPath.nodeSequence[j]);
-            }
-
-        }
     }
 }

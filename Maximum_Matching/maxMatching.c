@@ -3,6 +3,7 @@
 #include<string.h>
 #include<sys/time.h>
 #include<time.h>
+#include<omp.h>
 
 #include "../Utilities/format_file/format_file.h"
 #include "../Utilities/Graphs/bipartite_graph.h"
@@ -11,16 +12,12 @@ void matchAndUpdate(struct BipartiteGraph* graph, struct Matching* matching,
                     int u, int* visited, 
                     int* degree) {
     
-    if(visited[u] == 0) {
-        visited[u] = 1;
+    if(__sync_fetch_and_add(&visited[u],1) == 0) {
 
         struct AdjacencyListNodeBipartite* v = graph->x[u].head;
         while(v) {            
             // If v is unvisited
-            if(visited[v->curr] == 0) {
-                //Update the visited array
-                visited[v->curr] = 1;
-
+            if(__sync_fetch_and_add(&visited[v->curr],1) == 0) {
                 //Updating matching 
                 addEdgeToMatching(matching,u,v->curr);        
                 
@@ -28,8 +25,7 @@ void matchAndUpdate(struct BipartiteGraph* graph, struct Matching* matching,
                 int yInd = v->curr - graph->xVertices;
                 struct AdjacencyListNodeBipartite* w = graph->y[yInd].head;
                 while(w) {
-                    degree[w->curr] --;
-                    if(degree[w->curr] == 1) {
+                    if(__sync_fetch_and_add(&degree[w->curr],-1) == 2) {
                         matchAndUpdate(graph,matching,w->curr,visited,degree);
                     }
                     w = w->next;
@@ -64,8 +60,12 @@ struct Matching* karpSipser(struct BipartiteGraph* graph) {
     int* degreeOneNodes = (int*)malloc(sizeof(int)*graph->xVertices);
     int* notDegreeOneNodes = (int*)malloc(sizeof(int)*graph->xVertices);
     int oneCount = 0, notOneCount = 0;
+
     for(int i=0;i<graph->xVertices;i++) {
         degree[i] = calculateDegree(graph,i);
+    }
+    
+    for(int i=0;i<graph->xVertices;i++) {
 
         if(degree[i] == 1) {
             degreeOneNodes[oneCount] = i;
@@ -76,6 +76,7 @@ struct Matching* karpSipser(struct BipartiteGraph* graph) {
         }
     }
 
+    printf("Nodes of degree 1:-%d\nNodes of other degrees:-%d\n",oneCount,notOneCount);
     printf("Before match and update\n");
 
     // Match degree=1 vertices, update degrees and look for new degree = 1 vertices
@@ -92,7 +93,6 @@ struct Matching* karpSipser(struct BipartiteGraph* graph) {
     free(notDegreeOneNodes);
     free(degree);
     free(visited);
-
     return matching;
 }
 
@@ -118,7 +118,7 @@ struct LayeredGraphAndLayer* layeredGraphTS(struct BipartiteGraph* graph, struct
 
         struct Layer* layerK2 = createLayer(); // X
 
-        struct UnweightedEdgeList* localEdgeList = createUnweightedEdgeList(0);
+        struct UnweightedEdgeList* edgeList = createUnweightedEdgeList(0);
 
         for(int i=0;i<currLayerKSize;i++) {
             int currNode = layerList[k].vertices[i];
@@ -126,14 +126,13 @@ struct LayeredGraphAndLayer* layeredGraphTS(struct BipartiteGraph* graph, struct
 
             while(v != NULL) {
 
-                if(visited[v->curr] == 0) {
-                    visited[v->curr] = 1;
+                if(__sync_fetch_and_add(&visited[v->curr],1) == 0) {
                     insertVertexInLayer(layerK1,v->curr);
-                    insertEdgeInEdgeList(localEdgeList,currNode,v->curr);
+                    insertEdgeInEdgeList(edgeList,currNode,v->curr);
 
                     int vertexMatch = search(currMatching->yMappings,v->curr,currMatching->yVertices);
                     if(vertexMatch != -1) {
-                        insertEdgeInEdgeList(localEdgeList,v->curr,vertexMatch);
+                        insertEdgeInEdgeList(edgeList,v->curr,vertexMatch);
                         insertVertexInLayer(layerK2,vertexMatch);
                     }
                 }
@@ -141,14 +140,12 @@ struct LayeredGraphAndLayer* layeredGraphTS(struct BipartiteGraph* graph, struct
                 v = v->next;
             }
         }
-
-        printf("End of For loop in layered graph ts\n");
-
+        
         if(layerK1->numVertices == 0 || checkUnmatchedVertexInLayer(layerK1,currMatching)) {
             k ++;
             layerList = (struct Layer*)realloc(layerList,sizeof(struct Layer)*(k+1));
             layerList[k] = *layerK1;
-            struct LayeredGraph* layeredGraph = createLayeredGraph(k,layerList,localEdgeList);
+            struct LayeredGraph* layeredGraph = createLayeredGraph(k,layerList,edgeList);
             return createLayeredGraphAndLayer(layerK1,layeredGraph);
         } else {
             k = k+2;
@@ -166,8 +163,7 @@ struct AugmentingPath* dfs_tfs(struct BipartiteGraph* graph, int curr, int* visi
 
     while(adjU) {
         
-        if(visited[adjU->curr] == 0) {
-            visited[adjU->curr] = 1;
+        if( __sync_fetch_and_add(&visited[adjU->curr],1) == 0) {
 
             int matchedVertex = search(currMatching->xMappings,adjU->curr,currMatching->xVertices);
             if(matchedVertex == -1) {
@@ -222,20 +218,32 @@ int hopcraftKarp(struct BipartiteGraph* graph) {
         for(int i=0;i<totalVertices;i++) {
             visited[i] = 0;
         }
+    
+        //Retrieving the unmatchedVertices in the last layer
+        int *unmatchedVertices = malloc(sizeof(int) * finLayerGraph->layerk1->numVertices);
+        int numElements = 0;
 
         for(int i=0;i<finLayerGraph->layerk1->numVertices;i++) {
             int currVertex = finLayerGraph->layerk1->vertices[i];
 
             if(search(currMatching->yMappings,currVertex,currMatching->yVertices) == -1) {
-                struct AugmentingPath* currPath = dfs_tfs(graph,currVertex,visited,currMatching);
-                reverseAugmentingPath(currPath);
-                insertPathInPathList(currPath,augPathList);
-                
+                unmatchedVertices[numElements] = currVertex;
+                numElements ++;
             }
+        }
+        unmatchedVertices = realloc(unmatchedVertices,sizeof(int) * numElements);
+
+        for(int i=0;i<numElements;i++) {
+            int currVertex = unmatchedVertices[i];
+            struct AugmentingPath* currPath = dfs_tfs(graph,currVertex,visited,currMatching);
+            reverseAugmentingPath(currPath);
+            insertPathInPathList(currPath,augPathList);                  
         }
         xorMatchingAndPathList(currMatching,augPathList,graph->xVertices);
         // printMatching(currMatching);
-
+        // printAugPathList(augPathList);
+        
+        free(unmatchedVertices);
         printf("Number of aug path list vertices:- %d\n",augPathList->numAugPaths);
         if(augPathList->numAugPaths == 0 || augPathList == NULL) {
             printf("List is NULL\n");
@@ -252,7 +260,7 @@ int hopcraftKarp(struct BipartiteGraph* graph) {
 }
 
 int main() {
-    char* newFilename = "../../Maximum_Matching/Bipartite_Graphs_sanitized/out.opsahl-collaboration";
+    char* newFilename = "../../Maximum_Matching/Bipartite_Graphs_sanitized/out.bag-kos";
     struct BipartiteGraph* graph = readBipartiteGraph(newFilename);
     //printBipartiteGraph(graph);
     //struct EdgeList* sorted = sortUndirectedWeightedGraph(graph);
